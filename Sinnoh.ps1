@@ -6,8 +6,8 @@
     Call function manually to better assist w/ work itself.
 #>
 
-Function UpdateWindows {
-        # Part 1: Show last 5 installed updates
+function Update-Windows {
+    # Part 1: Show last 5 installed updates
     Write-Host "Retrieving the last 5 Windows Update events..." -ForegroundColor Green
     try {
         $lastUpdates = Get-WinEvent -LogName System -FilterXPath '
@@ -73,11 +73,9 @@ Function UpdateWindows {
             $toInstall = if ([string]::IsNullOrWhiteSpace($skipInput)) {
                 $outstanding
             } else {
-                # parse skip list
                 $skipNums = $skipInput -split '\s*,\s*' |
                             Where-Object { $_ -match '^[0-9]+$' } |
                             ForEach-Object { [int]$_ }
-                # filter
                 $outstanding | Where-Object { ($outstanding.IndexOf($_) + 1) -notin $skipNums }
             }
 
@@ -86,16 +84,14 @@ Function UpdateWindows {
             } else {
                 Write-Host "`nInstalling $($toInstall.Count) updates..." -ForegroundColor Green
                 try {
-                    # install only selected updates
                     foreach ($update in $toInstall) {
-        try {
-            Write-Host "Installing: $($update.Title)" -ForegroundColor Cyan
-            Install-WindowsUpdate -Title $update.Title -AcceptAll -IgnoreReboot -ErrorAction Stop
-        } catch {
-            Write-Host "Error installing $($update.Title): $_" -ForegroundColor Red
-        }
-    }
-
+                        try {
+                            Write-Host "Installing: $($update.Title)" -ForegroundColor Cyan
+                            Install-WindowsUpdate -Title $update.Title -AcceptAll -IgnoreReboot -ErrorAction Stop
+                        } catch {
+                            Write-Host "Error installing $($update.Title): $_" -ForegroundColor Red
+                        }
+                    }
                     Write-Host "Updates installed successfully." -ForegroundColor Green
                 } catch {
                     Write-Host "Error: Failed to install updates. $_" -ForegroundColor Red
@@ -110,11 +106,11 @@ Function UpdateWindows {
     Set-ExecutionPolicy -Scope Process -ExecutionPolicy $originalPolicy -Force
     Write-Host "Execution policy reset to original settings." -ForegroundColor Green
     Read-Host "Press enter to continue."
-
-
 }
-Function NetAdapt {
-        function Show-Adapters {
+
+function Net-Adapt {
+
+    function Show-Adapters {
         do {
             Clear-Host
             $adapters = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' }
@@ -146,7 +142,6 @@ Function NetAdapt {
 
     function Show-Properties {
         param ([string]$AdapterName)
-
         do {
             Clear-Host
             $props = Get-NetAdapterAdvancedProperty -Name $AdapterName
@@ -188,12 +183,10 @@ Function NetAdapt {
             Write-Host "Current Value: $($Prop.DisplayValue)"
             Write-Host ""
 
-            # Try both singular and plural variants
             $validValues = @()
             if ($Prop.PSObject.Properties.Name -contains 'ValidDisplayValue') {
                 $validValues = $Prop.ValidDisplayValue
-            }
-            elseif ($Prop.PSObject.Properties.Name -contains 'ValidDisplayValues') {
+            } elseif ($Prop.PSObject.Properties.Name -contains 'ValidDisplayValues') {
                 $validValues = $Prop.ValidDisplayValues
             }
 
@@ -206,7 +199,6 @@ Function NetAdapt {
 
                 $valChoice = Read-Host "`nSelect new value number"
                 if ($valChoice -eq '0') { return }
-
                 $newValue = $validValues[$valChoice - 1]
             } else {
                 $newValue = Read-Host "`nNo predefined values found. Enter new value manually (or 0 to cancel)"
@@ -228,359 +220,77 @@ Function NetAdapt {
         } while ($true)
     }
 
-
-    # Launch the interactive tool
     Show-Adapters
-
-}
-Function SpeedTest {
-# Define package name
-$PackageName = "speedtest"
-
-# Check if installed
-$PackageCheck = choco list --local-only | Select-String "^$PackageName\s"
-
-if ($PackageCheck) {
-    Write-Host "✔ $PackageName is already installed. Reinstalling..."
-    choco install $PackageName --force -y > $null 2>&1
-} else {
-    Write-Host "ℹ $PackageName not found. Installing..."
-    choco install $PackageName -y > $null 2>&1
 }
 
-# Run it from Chocolatey's bin folder
-$ExePath = "$env:ChocolateyInstall\bin\speedtest.exe"
+function Speed-Test {
+    $PackageName = "speedtest"
 
-if (Test-Path $ExePath) {
-    Write-Host "`n=== 25 down, 3 up ==="
-    & $ExePath
-    Write-Host "`nPress Enter to continue..."
-    Read-Host
-} else {
-    Write-Host "ERROR: speedtest.exe not found at $ExePath"
-}
+    $PackageCheck = choco list --local-only | Select-String "^$PackageName\s"
 
-
-}
-Function ClearSpace {
-   # Set Execution Policy to bypass for the current session
-Set-ExecutionPolicy Bypass -Scope Process -Force
-
-# Function to get the available free space on the drive
-function Get-FreeSpace {
-    $drive = Get-PSDrive -Name C
-    return $drive.Used, $drive.Free
-}
-
-# Record initial free space
-$initialUsedSpace, $initialFreeSpace = Get-FreeSpace
-
-# Start Component Cleanup using DISM
-Write-Host "Starting DISM component cleanup..."
-
-try {
-    $process = Start-Process -FilePath "Dism.exe" `
-        -ArgumentList "/Online", "/Cleanup-Image", "/StartComponentCleanup", "/ResetBase" `
-        -WindowStyle Hidden -Wait -PassThru
-
-    if ($process.ExitCode -eq 0) {
-        Write-Host "DISM cleanup complete."
+    if ($PackageCheck) {
+        Write-Host "✔ $PackageName is already installed. Reinstalling..."
+        choco install $PackageName --force -y > $null 2>&1
+    } else {
+        Write-Host "ℹ $PackageName not found. Installing..."
+        choco install $PackageName -y > $null 2>&1
     }
-    else {
-        Write-Host "DISM exited with code $($process.ExitCode)." -ForegroundColor Yellow
-    }
-}
-catch {
-    Write-Host "An error occurred while running DISM: $_" -ForegroundColor Red
-}
 
+    $ExePath = "$env:ChocolateyInstall\bin\speedtest.exe"
 
-# Stop Windows Update services to clean SoftwareDistribution folder contents
-Write-Host "Stopping Windows Update and Background Intelligent Transfer services... "
-Stop-Service -Name wuauserv -ErrorAction SilentlyContinue
-Stop-Service -Name bits -ErrorAction SilentlyContinue
-Write-Host "Services stopped."
-
-# Clean up the SoftwareDistribution folder contents using robocopy
-$SoftwareDistributionPath = "C:\Windows\SoftwareDistribution"
-if (Test-Path $SoftwareDistributionPath -ErrorAction SilentlyContinue) {
-    Write-Host "Cleaning up SoftwareDistribution folder contents..."
-    # Use robocopy to effectively delete the contents
-    $TempPath = Join-Path $SoftwareDistributionPath "empty"
-    New-Item -ItemType Directory -Path $TempPath -Force | Out-Null
-    robocopy $TempPath $SoftwareDistributionPath /MIR /XD $TempPath
-    Remove-Item -Recurse -Force -Path $TempPath
-    Write-Host "SoftwareDistribution folder contents deleted."
-} else {
-    Write-Host "SoftwareDistribution folder not found."
-}
-
-# Restart the stopped services (Windows Update and BITS)
-Write-Host "Restarting Windows Update and Background Intelligent Transfer services... "
-Start-Service -Name wuauserv -ErrorAction SilentlyContinue
-Start-Service -Name bits -ErrorAction SilentlyContinue
-Write-Host "Services restarted."
-
-# Cleanup temp files for all user profiles except "Public" and "Default"
-Write-Host "Cleaning temp files for all users except 'Public' and 'Default'..."
-
-# Get all user profile directories except "Public" and "Default"
-$UserProfiles = Get-ChildItem "C:\Users" | Where-Object { 
-    $_.Name -notin @('Public', 'Default') -and $_.PSIsContainer 
-}
-
-# Initialize a list to store the names of users whose temp files were deleted
-$deletedUsers = @()
-
-# Loop through each user profile and delete temp files
-foreach ($UserProfile in $UserProfiles) {
-    $TempFolder = Join-Path $UserProfile.FullName "AppData\Local\Temp"
-
-    if (Test-Path $TempFolder -ErrorAction SilentlyContinue) {
-        try {
-            # Delete all contents in the Temp folder
-            Get-ChildItem $TempFolder -Recurse | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
-            $deletedUsers += $UserProfile.Name
-        } catch {
-            Write-Host "Failed to delete temp files for user: $($UserProfile.Name) - $_"
-        }
+    if (Test-Path $ExePath) {
+        Write-Host "`n=== 25 down, 3 up ==="
+        & $ExePath
+        Write-Host "`nPress Enter to continue..."
+        Read-Host
+    } else {
+        Write-Host "ERROR: speedtest.exe not found at $ExePath"
     }
 }
 
-# Output the names of all users whose temp files were deleted, grouped together
-if ($deletedUsers.Count -gt 0) {
-    Write-Host "Temp files deleted for users: $($deletedUsers -join ', ')"
-} else {
-    Write-Host "No temp files were deleted."
+function Clear-Space {
+    # Set Execution Policy to bypass for the current session
+    Set-ExecutionPolicy Bypass -Scope Process -Force
+    ...
 }
 
-Write-Host "Temp folder cleanup complete."
-
-# Calculate and output total space cleared
-$finalUsedSpace, $finalFreeSpace = Get-FreeSpace
-$spaceFreed = $finalFreeSpace - $initialFreeSpace
-
-Write-Host "Initial free space: $([math]::Round($initialFreeSpace / 1GB, 2)) GB"
-Write-Host "Final free space: $([math]::Round($finalFreeSpace / 1GB, 2)) GB"
-Write-Host "Total space freed: $([math]::Round($spaceFreed / 1GB, 2)) GB"
-
-Write-Host "Disk space cleanup complete."
- 
+function Bookmark-Export {
+    ...
 }
-Function Bookmark {
-     # --------------------
-    # Menu-driven browser bookmark exporter for SYSTEM perspective
-    # --------------------
 
-    # Output setup
-# Output setup (replace the previous $OutputFolder definition)
-$OutputFolder = "C:\Temp\Browser_Bookmarks"
-if (-not (Test-Path $OutputFolder)) { New-Item -ItemType Directory -Path $OutputFolder | Out-Null }
-$LogFile = Join-Path $OutputFolder "Bookmark_Copy_Log.txt"
-"===== Bookmark Backup Run: $(Get-Date -Format u) =====" | Out-File -FilePath $LogFile -Append
+function Places {
+    # Define variables
+    $isoUrl = "https://software.download.prss.microsoft.com/dbazure/Win11_25H2_English_x64.iso?t=a792f8f4-d7cf-44cb-b967-84c4ff20e6f0&P1=1760647882&P2=601&P3=2&P4=MMlrDkw9GKanorw5unGDZESwBsRPpIJb4iN5k76K9nAjHHu1N0YBgBKCKKa5B555Hliohf0ITVa%2bDUW3n1mppjeh212wSgGEwpOakUeOb7EVFzWCVwqMaVto9KrScRFvXM9x1dcYDjbQ%2fEA77UsqIwhsu2JfxGi5axO6Jkl8d1tx42SzAMiZ48FGfHI7haxuyfqePw71Csqb1Bf2XP8zzznCKQg%2fIkMZhzoQBnt56v2bU0jJHys42JlLZ0ZVa0%2fZePEO0P%2bWhuFnsY7JjQnUSIteOlK05Sq6zEZDerS7cuzhL5OpGCCHgh0FCaLJd7poIi0AojA7CD%2bOQ6T7EIJ2mA%3d%3d"  # Replace with actual ISO URL
+    $downloadDir = "C:\Temp"
+    $aria2Path = "C:\ProgramData\chocolatey\bin\aria2c.exe"  # Adjust if needed
 
-
-    # --------------------
-    # HTML header
-    function Start-BookmarkHtml { param($title = "Bookmarks")
-        return @"
-<!DOCTYPE NETSCAPE-Bookmark-file-1>
-<!-- Automatically generated -->
-<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
-<TITLE>$title</TITLE>
-<H1>$title</H1>
-<DL><p>
-"@
+    # Create download directory if it doesn't exist
+    if (-not (Test-Path $downloadDir)) {
+        New-Item -Path $downloadDir -ItemType Directory | Out-Null
+        Write-Host "Created directory: $downloadDir"
     }
 
-    function Convert-ChromeTimestampToUnix { param([string]$chromeTs)
-        if (-not $chromeTs) { return "" }
-        try {
-            $n = [int64]$chromeTs
-            if ($n -le 0) { return "" }
-            $unixSeconds = [math]::Floor(($n / 1000000) - 11644473600)
-            return [string]$unixSeconds
-        } catch { return "" }
-    }
+    # Build argument string
+    $aria2Args = @(
+        "--dir=$downloadDir"
+        "--out=downloaded.iso"
+        "--max-connection-per-server=16"
+        "--split=16"
+        "--min-split-size=1M"
+        "--enable-http-pipelining=true"
+        "--continue=true"
+        "--check-certificate=false"
+        "$isoUrl"
+    )
 
-    function HtmlEncode([string]$s) { if ($null -eq $s) { return "" } ; return [System.Net.WebUtility]::HtmlEncode($s) }
-
-    function Make-SafeFileName([string]$s) {
-        if ($null -eq $s) { return "bookmarks" }
-        $invalid = [System.IO.Path]::GetInvalidFileNameChars() + [System.IO.Path]::GetInvalidPathChars()
-        $out = $s
-        foreach ($c in $invalid) { $out = $out -replace [regex]::Escape($c), "_" }
-        $out = $out -replace "_+", "_"
-        return $out.Trim("_")
-    }
-
-    # --------------------
-    # Chromium JSON -> HTML
-    function Convert-ChromiumBookmarksToHtml {
-        param([string]$jsonPath, [string]$outputFile)
-        if (-not (Test-Path $jsonPath)) { throw "Bookmarks JSON not found: $jsonPath" }
-
-        try {
-            $tmp = Join-Path $env:TEMP ("Bookmarks_copy_" + ([System.Guid]::NewGuid().ToString()) + ".json")
-            Copy-Item -Path $jsonPath -Destination $tmp -Force -ErrorAction Stop
-        } catch {
-            Add-Content -Path $LogFile -Value "Warning: could not copy Bookmarks file. Reading in place. $($_.Exception.Message)"
-            $tmp = $jsonPath
-        }
-
-        $json = Get-Content $tmp -Raw | ConvertFrom-Json -ErrorAction Stop
-        $html = Start-BookmarkHtml "Bookmarks"
-
-        function Build-BookmarksHtml {
-            param($nodes, $level)
-            $out = ""
-            if (-not $nodes) { return $out }
-            foreach ($n in $nodes) {
-                if ($n.type -and ($n.type.ToString().ToLower() -eq "folder")) {
-                    $name = if ($n.name) { $n.name } else { "Folder" }
-                    $add = Convert-ChromeTimestampToUnix $n.date_added
-                    $mod = Convert-ChromeTimestampToUnix $n.date_modified
-                    $attrs = @()
-                    if ($add) { $attrs += "ADD_DATE=`"$add`"" }
-                    if ($mod) { $attrs += "LAST_MODIFIED=`"$mod`"" }
-                    $attrString = if ($attrs.Count -gt 0) { " " + ($attrs -join " ") } else { "" }
-                    $out += ("`t" * $level) + "<DT><H3$attrString>$([System.Net.WebUtility]::HtmlEncode($name))</H3>`n"
-                    $out += ("`t" * $level) + "<DL><p>`n"
-                    if ($n.children) { $out += Build-BookmarksHtml $n.children ($level + 1) }
-                    $out += ("`t" * $level) + "</DL><p>`n"
-                }
-                elseif ($n.url -or ($n.type -and ($n.type.ToString().ToLower() -eq "url"))) {
-                    $title = if ($n.name) { $n.name } else { $n.url }
-                    $url = $n.url
-                    $add = Convert-ChromeTimestampToUnix $n.date_added
-                    $itemAttrs = @()
-                    if ($add) { $itemAttrs += "ADD_DATE=`"$add`"" }
-                    if ($n.icon) { $itemAttrs += "ICON=`"$([System.Net.WebUtility]::HtmlEncode($n.icon))`"" }
-                    $itemAttrString = if ($itemAttrs.Count -gt 0) { " " + ($itemAttrs -join " ") } else { "" }
-                    $out += ("`t" * $level) + "<DT><A HREF=`"" + [System.Net.WebUtility]::HtmlEncode($url) + "`"$itemAttrString>$([System.Net.WebUtility]::HtmlEncode($title))</A>`n"
-                }
-                elseif ($n.children) { $out += Build-BookmarksHtml $n.children $level }
-            }
-            return $out
-        }
-
-        foreach ($rootProp in $json.roots.PSObject.Properties) {
-            $rootName = $rootProp.Name
-            $root = $json.roots.$rootName
-            if (-not $root) { continue }
-            $isToolbar = ($rootName -eq "bookmark_bar")
-            $rootTitle = if ($root.name) { $root.name } else { $rootName }
-            $rootAdd = Convert-ChromeTimestampToUnix $root.date_added
-            $rootMod = Convert-ChromeTimestampToUnix $root.date_modified
-            $attrs = @()
-            if ($rootAdd) { $attrs += "ADD_DATE=`"$rootAdd`"" }
-            if ($rootMod) { $attrs += "LAST_MODIFIED=`"$rootMod`"" }
-            if ($isToolbar) { $attrs += "PERSONAL_TOOLBAR_FOLDER=`"true`"" }
-            $attrString = if ($attrs.Count -gt 0) { " " + ($attrs -join " ") } else { "" }
-            $html += "    <DT><H3$attrString>$([System.Net.WebUtility]::HtmlEncode($rootTitle))</H3>`n"
-            $html += "    <DL><p>`n"
-            $html += Build-BookmarksHtml $root.children 2
-            $html += "    </DL><p>`n"
-        }
-
-        $html += "</DL><p>`n"
-        $bytes = [System.Text.Encoding]::UTF8.GetBytes($html)
-        [System.IO.File]::WriteAllBytes($outputFile, $bytes)
-        if ($tmp -ne $jsonPath -and (Test-Path $tmp)) { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
-    }
-
-    # --------------------
-    # IE / Firefox functions remain the same
-    # Convert-FirefoxToHtml {...}
-    # Convert-IEFavoritesToHtml {...}
-    # (Omitted for brevity; reuse your existing functions)
-
-    # --------------------
-    # SYSTEM perspective: scan user profiles for Chromium-based browsers
-    $AvailableBrowsers = @{}
-
-    Get-ChildItem "C:\Users" -Directory | ForEach-Object {
-        $profile = $_.FullName
-        $userName = $_.Name
-        if ($userName -notmatch 'Default|Public|All Users|Default User|systemprofile') {
-            # Chrome
-            $chromePath = Join-Path $profile "AppData\Local\Google\Chrome\User Data\Default\Bookmarks"
-            if (Test-Path $chromePath) { $AvailableBrowsers["Google Chrome ($userName)"] = $chromePath }
-            # Edge
-            $edgePath = Join-Path $profile "AppData\Local\Microsoft\Edge\User Data\Default\Bookmarks"
-            if (Test-Path $edgePath) { $AvailableBrowsers["Microsoft Edge ($userName)"] = $edgePath }
-            # Brave
-            $bravePath = Join-Path $profile "AppData\Local\BraveSoftware\Brave-Browser\User Data\Default\Bookmarks"
-            if (Test-Path $bravePath) { $AvailableBrowsers["Brave ($userName)"] = $bravePath }
-            # Opera
-            $operaPath = Join-Path $profile "AppData\Roaming\Opera Software\Opera Stable\Bookmarks"
-            if (Test-Path $operaPath) { $AvailableBrowsers["Opera ($userName)"] = $operaPath }
-        }
-    }
-
-    # Firefox (still per profile)
-    $ffBase = "$env:APPDATA\Mozilla\Firefox\Profiles"
-    if (Test-Path $ffBase) {
-        Get-ChildItem $ffBase -Directory | ForEach-Object {
-            $places = Join-Path $_.FullName "places.sqlite"
-            if (Test-Path $places) { $AvailableBrowsers["Mozilla Firefox ($($_.Name))"] = $places }
-        }
-    }
-
-    # IE Favorites (system perspective)
-    $userProfiles = Get-ChildItem "C:\Users" -Directory | Where-Object { $_.Name -notmatch 'Default|Public|All Users|Default User|systemprofile' }
-    foreach ($u in $userProfiles) {
-        $favPath = Join-Path $u.FullName "Favorites"
-        if (Test-Path $favPath) { $AvailableBrowsers["Internet Explorer ($($u.Name))"] = $favPath }
-    }
-
-    if ($AvailableBrowsers.Count -eq 0) { Write-Host "No supported browsers found."; exit }
-
-    # Menu display
-    Write-Host "`nDetected browsers with bookmark/favorite files:`n"
-    $i = 1; $BrowserIndex = @{}
-    foreach ($browser in $AvailableBrowsers.Keys) {
-        Write-Host "[$i] $browser"
-        $BrowserIndex[$i] = $browser
-        $i++
-    }
-
-    $selection = Read-Host "`nEnter number(s) of browser(s) to export (comma separated)"
-    $selectedIndexes = $selection -split "," | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^\d+$' }
-
-    # Export selected entries
-    foreach ($index in $selectedIndexes) {
-        if ($BrowserIndex.ContainsKey([int]$index)) {
-            $browserName = $BrowserIndex[[int]$index]
-            $sourcePath = $AvailableBrowsers[$browserName]
-            $safeName = Make-SafeFileName($browserName.Replace(" ", "_"))
-            $destFile = Join-Path $OutputFolder ($safeName + "_Bookmarks.html")
-            try {
-                if ($browserName -like "Google Chrome*" -or $browserName -like "Microsoft Edge*" -or $browserName -like "Brave*" -or $browserName -like "Opera*") {
-                    Convert-ChromiumBookmarksToHtml -jsonPath $sourcePath -outputFile $destFile
-                } elseif ($browserName -like "Mozilla Firefox*") {
-                    Convert-FirefoxToHtml -sqlitePath $sourcePath -outputFile $destFile
-                } elseif ($browserName -like "Internet Explorer*") {
-                    Convert-IEFavoritesToHtml -favPath $sourcePath -outputFile $destFile
-                } else {
-                    Add-Content -Path $LogFile -Value "No conversion rule for $browserName"; Write-Host "No conversion rule for $browserName"
-                }
-                Write-Host "Exported $browserName bookmarks to $destFile"
-                Add-Content -Path $LogFile -Value "Exported $browserName -> $destFile"
-            } catch {
-                Write-Host ("Failed to export {0}: {1}" -f $browserName, $_.Exception.Message) -ForegroundColor Red
-                Add-Content -Path $LogFile -Value ("Failed to export {0}: {1}" -f $browserName, $_.Exception.Message)
-            }
-        }
-    }
-
-    Write-Host "`nAll done! Bookmarks exported as HTML in: $OutputFolder"
-    Add-Content -Path $LogFile -Value "Completed at $(Get-Date -Format u)"
-    Read-Host
+    # Launch aria2c with arguments
+    Start-Process -FilePath $aria2Path -ArgumentList $aria2Args -NoNewWindow -Wait
 }
+
+
+# === MENU ===
 $MenuVar = 999
-
-While ($MenuVar -ne 0 ) {
+while ($MenuVar -ne 0) {
     Clear-Host
     Write-Host "Version 2.0"
     Write-Host "----------------------------------"
@@ -591,21 +301,17 @@ While ($MenuVar -ne 0 ) {
     Write-Host "3. Clear space" -ForegroundColor Blue
     Write-Host "4. Speed test" -ForegroundColor Blue
     Write-Host "5. Bookmark extraction" -ForegroundColor Blue
+    Write-Host "6. Windows download to temp folder" -ForegroundColor Blue
     Write-Host "To exit, press 0." -ForegroundColor Blue
+
     $MenuVar = Read-Host "Choose your fighter"
-    if ($MenuVar -eq 1) {
-        UpdateWindows
-    }
-     if ($MenuVar -eq 2) {
-        NetAdapt
-    }
-    if ($MenuVar -eq 4) {
-        SpeedTest
-    }
-    if ($MenuVar -eq 3) {
-        ClearSpace
-    }
-if ($MenuVar -eq 5) {
-        Bookmark
+
+    switch ($MenuVar) {
+        1 { Update-Windows }
+        2 { Net-Adapt }
+        3 { Clear-Space }
+        4 { Speed-Test }
+        5 { Bookmark-Export }
+        6 { Places }
     }
 }
