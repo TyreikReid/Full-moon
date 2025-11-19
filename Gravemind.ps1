@@ -470,7 +470,6 @@ function Bookmark-Export {
     Add-Content -Path $LogFile -Value "Completed at $(Get-Date -Format u)"
     Read-Host
 }
-}
 
 function Places {
     # Define variables
