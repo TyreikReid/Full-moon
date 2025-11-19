@@ -522,7 +522,7 @@ while ($true) {
     Clear-Host
    Write-Host "Version 3.0"
     Write-Host "----------------------------------"
-    Write-Host "Tyreik's tools." -ForegroundColor Purple
+    Write-Host "Tyreik's tools." -ForegroundColor DarkMagenta
     Write-Host "----------------------------------"
     Write-Host "1. Update Windows PC" -ForegroundColor Green
     Write-Host "2. Configure adapters" -ForegroundColor Green
