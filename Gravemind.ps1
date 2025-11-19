@@ -261,10 +261,15 @@ function Bookmark-Export {
 
     # Output setup
 # Output setup (replace the previous $OutputFolder definition)
-$OutputFolder = "C:\Temp\Browser_Bookmarks"
-if (-not (Test-Path $OutputFolder)) { New-Item -ItemType Directory -Path $OutputFolder | Out-Null }
-$LogFile = Join-Path $OutputFolder "Bookmark_Copy_Log.txt"
-"===== Bookmark Backup Run: $(Get-Date -Format u) =====" | Out-File -FilePath $LogFile -Append
+   # Output setup
+    $OutputFolder = "C:\Temp\Browser_Bookmarks"
+    if (-not (Test-Path $OutputFolder)) { 
+        New-Item -ItemType Directory -Path $OutputFolder | Out-Null 
+    }
+
+    $LogFile = Join-Path $OutputFolder "Bookmark_Copy_Log.txt"
+    "===== Bookmark Backup Run: $(Get-Date -Format u) =====" | 
+        Out-File -FilePath $LogFile -Append
 
 
     # --------------------
@@ -523,4 +528,4 @@ while ($MenuVar -ne 0) {
         5 { Bookmark-Export }
         6 { Places }
     }
-
+}
