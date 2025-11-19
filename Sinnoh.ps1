@@ -249,9 +249,108 @@ function Speed-Test {
 }
 
 function Clear-Space {
-    # Set Execution Policy to bypass for the current session
-    Set-ExecutionPolicy Bypass -Scope Process -Force
-    ...
+ # Set Execution Policy to bypass for the current session
+Set-ExecutionPolicy Bypass -Scope Process -Force
+
+# Function to get the available free space on the drive
+function Get-FreeSpace {
+    $drive = Get-PSDrive -Name C
+    return $drive.Used, $drive.Free
+}
+
+# Record initial free space
+$initialUsedSpace, $initialFreeSpace = Get-FreeSpace
+
+# Start Component Cleanup using DISM
+Write-Host "Starting DISM component cleanup..."
+
+try {
+    $process = Start-Process -FilePath "Dism.exe" `
+        -ArgumentList "/Online", "/Cleanup-Image", "/StartComponentCleanup", "/ResetBase" `
+        -WindowStyle Hidden -Wait -PassThru
+
+    if ($process.ExitCode -eq 0) {
+        Write-Host "DISM cleanup complete."
+    }
+    else {
+        Write-Host "DISM exited with code $($process.ExitCode)." -ForegroundColor Yellow
+    }
+}
+catch {
+    Write-Host "An error occurred while running DISM: $_" -ForegroundColor Red
+}
+
+
+# Stop Windows Update services to clean SoftwareDistribution folder contents
+Write-Host "Stopping Windows Update and Background Intelligent Transfer services... "
+Stop-Service -Name wuauserv -ErrorAction SilentlyContinue
+Stop-Service -Name bits -ErrorAction SilentlyContinue
+Write-Host "Services stopped."
+
+# Clean up the SoftwareDistribution folder contents using robocopy
+$SoftwareDistributionPath = "C:\Windows\SoftwareDistribution"
+if (Test-Path $SoftwareDistributionPath -ErrorAction SilentlyContinue) {
+    Write-Host "Cleaning up SoftwareDistribution folder contents..."
+    # Use robocopy to effectively delete the contents
+    $TempPath = Join-Path $SoftwareDistributionPath "empty"
+    New-Item -ItemType Directory -Path $TempPath -Force | Out-Null
+    robocopy $TempPath $SoftwareDistributionPath /MIR /XD $TempPath
+    Remove-Item -Recurse -Force -Path $TempPath
+    Write-Host "SoftwareDistribution folder contents deleted."
+} else {
+    Write-Host "SoftwareDistribution folder not found."
+}
+
+# Restart the stopped services (Windows Update and BITS)
+Write-Host "Restarting Windows Update and Background Intelligent Transfer services... "
+Start-Service -Name wuauserv -ErrorAction SilentlyContinue
+Start-Service -Name bits -ErrorAction SilentlyContinue
+Write-Host "Services restarted."
+
+# Cleanup temp files for all user profiles except "Public" and "Default"
+Write-Host "Cleaning temp files for all users except 'Public' and 'Default'..."
+
+# Get all user profile directories except "Public" and "Default"
+$UserProfiles = Get-ChildItem "C:\Users" | Where-Object { 
+    $_.Name -notin @('Public', 'Default') -and $_.PSIsContainer 
+}
+
+# Initialize a list to store the names of users whose temp files were deleted
+$deletedUsers = @()
+
+# Loop through each user profile and delete temp files
+foreach ($UserProfile in $UserProfiles) {
+    $TempFolder = Join-Path $UserProfile.FullName "AppData\Local\Temp"
+
+    if (Test-Path $TempFolder -ErrorAction SilentlyContinue) {
+        try {
+            # Delete all contents in the Temp folder
+            Get-ChildItem $TempFolder -Recurse | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
+            $deletedUsers += $UserProfile.Name
+        } catch {
+            Write-Host "Failed to delete temp files for user: $($UserProfile.Name) - $_"
+        }
+    }
+}
+
+# Output the names of all users whose temp files were deleted, grouped together
+if ($deletedUsers.Count -gt 0) {
+    Write-Host "Temp files deleted for users: $($deletedUsers -join ', ')"
+} else {
+    Write-Host "No temp files were deleted."
+}
+
+Write-Host "Temp folder cleanup complete."
+
+# Calculate and output total space cleared
+$finalUsedSpace, $finalFreeSpace = Get-FreeSpace
+$spaceFreed = $finalFreeSpace - $initialFreeSpace
+
+Write-Host "Initial free space: $([math]::Round($initialFreeSpace / 1GB, 2)) GB"
+Write-Host "Final free space: $([math]::Round($finalFreeSpace / 1GB, 2)) GB"
+Write-Host "Total space freed: $([math]::Round($spaceFreed / 1GB, 2)) GB"
+
+Write-Host "Disk space cleanup complete."
 }
 
 function Bookmark-Export {
@@ -315,3 +414,4 @@ while ($MenuVar -ne 0) {
         6 { Places }
     }
 }
+
