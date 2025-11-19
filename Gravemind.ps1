@@ -421,16 +421,18 @@ function Places {
 while ($true) {
 
     Clear-Host
-    Write-Host "System Tools 2.0"
-    Write-Host "-----------------------------------------"
-    Write-Host "1. Update Windows"
-    Write-Host "2. Configure Adapters"
-    Write-Host "3. Clear Space"
-    Write-Host "4. Speed Test"
-    Write-Host "5. Bookmark Extraction"
-    Write-Host "6. Download Windows ISO"
-    Write-Host "0. Exit"
-    Write-Host "-----------------------------------------"
+   Write-Host "Version 3.0"
+    Write-Host "----------------------------------"
+    Write-Host "Pick your poison." -ForegroundColor Red
+    Write-Host "----------------------------------"
+    Write-Host "1. Update Windows PC" -ForegroundColor Blue
+    Write-Host "2. Configure adapters" -ForegroundColor Blue
+    Write-Host "3. Clear space" -ForegroundColor Blue
+    Write-Host "4. Speed test" -ForegroundColor Blue
+    Write-Host "5. Bookmark extraction" -ForegroundColor Blue
+    Write-Host "6. Windows download to temp folder" -ForegroundColor Blue
+    Write-Host "To exit, press 0." -ForegroundColor Blue
+
 
     $opt = Read-Host "Choose your fighter"
 
