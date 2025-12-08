@@ -8,6 +8,21 @@
 # ============================================================
 #  FUNCTION: Update-Windows
 # ============================================================
+
+function Write-Log {
+    param(
+        [string]$Message,
+        [string]$Level = "INFO",
+        [string]$LogFile = "$PSScriptRoot\errors.log"
+    )
+
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $line = "[$timestamp] [$Level] $Message"
+
+    Add-Content -Path $LogFile -Value $line
+}
+
+
 function Update-Windows {
 
     Write-Host "Retrieving last 5 Windows Update events..." -ForegroundColor Green
