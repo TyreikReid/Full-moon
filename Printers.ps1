@@ -4,8 +4,8 @@
 # =========================
 
 # ======= USER CONFIG =======
-$DriverSourceUrl      = "https://github.com/YourOrg/hp-upd-driver/releases/download/v7.9.0/upd-pcl6-x64-7.9.0.26347.zip"  # asset or page URL
-$ExpectedSha256       = "PASTE-YOUR-SHA256-HERE"   # or $null to skip
+$DriverSourceUrl      = "https://support.hp.com/wcc-assets/content/dam/hp-wcc/fe-assets/images/swd/DownloadIcon.svg"  # asset or page URL
+$ExpectedSha256       = "FB6ABF4D077CABB8995799E1868E5B82F65D82178F7F9E34D88C4ACB4EB6261D"   # or $null to skip
 $PrinterIpMap         = @{
     1 = '10.20.30.41'
     2 = '10.20.30.42'
