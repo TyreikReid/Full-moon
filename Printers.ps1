@@ -205,3 +205,40 @@ try {
         }
 
         $portName    = "IP_$ip"
+        $printerName = [string]::Format($PrinterNameFormat, $num, $ip)
+
+        if (-not (Get-PrinterPort -Name $portName -ErrorAction SilentlyContinue)) {
+            Write-Host "Creating port $portName ($ip)"
+            Add-PrinterPort -Name $portName -PrinterHostAddress $ip -ErrorAction Stop
+        }
+        if (-not (Get-Printer -Name $printerName -ErrorAction SilentlyContinue)) {
+            Write-Host "Adding printer '$printerName'"
+            Add-Printer -Name $printerName -PortName $portName -DriverName $DriverName -ErrorAction Stop
+        } else {
+            Write-Host "Printer '$printerName' already exists."
+        }
+    }
+
+    # STEP L: Default printer
+    if ($DefaultPrinterNumber -and $PrinterIpMap.ContainsKey($DefaultPrinterNumber)) {
+        $defIp   = $PrinterIpMap[$DefaultPrinterNumber]
+        $defName = [string]::Format($PrinterNameFormat, $DefaultPrinterNumber, $defIp)
+        if (Get-Printer -Name $defName -ErrorAction SilentlyContinue) {
+            Write-Host "Setting default printer to '$defName'"
+            (Get-WmiObject -Query "Select * From Win32_Printer Where Name='$defName'").SetDefaultPrinter() | Out-Null
+        } else {
+            Write-Warning "Default printer '$defName' not found."
+        }
+    }
+
+    Write-Host "=== Completed HP UPD PCL6 deployment ==="
+}
+catch {
+    $ex = $_.Exception
+    $detail = if ($ex.InnerException) { $ex.InnerException.Message } else { $null }
+    Write-Error ("ERROR: {0}`nDETAIL: {1}`nSTACK: {2}" -f $ex.Message, $detail, $ex.StackTrace)
+    throw
+}
+finally {
+    Stop-Transcript | Out-Null
+    Write-Host "Log written to: $logPath"
