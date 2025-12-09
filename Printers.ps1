@@ -241,4 +241,4 @@ catch {
 }
 finally {
     Stop-Transcript | Out-Null
-    Write-Host "Log written to: $logPath"
+    Write-Host "Log written to: $logPath" }
