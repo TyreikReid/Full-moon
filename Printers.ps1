@@ -14,14 +14,14 @@
 
 # ======= USER CONFIG =======
 # 1) Your predetermined URL to the HP UPD PCL6 x64 package (ZIP or EXE)
-$DriverDownloadUrl = "https://github.com/YourOrg/hp-upd-driver/releases/download/v7.9.0/upd-pcl6-x64-7.9.0.26347.zip"
+$DriverDownloadUrl = "https://support.hp.com/wcc-assets/content/dam/hp-wcc/fe-assets/images/swd/DownloadIcon.svg"
 
 # 2) Optional SHA-256 checksum for integrity verification (set to $null to skip)
-$ExpectedSha256   = "PASTE-YOUR-SHA256-HERE"  # e.g. 'A1B2C3D4...'; or $null
+$ExpectedSha256   = "FB6ABF4D077CABB8995799E1868E5B82F65D82178F7F9E34D88C4ACB4EB6261D"  # e.g. 'A1B2C3D4...'; or $null
 
 # 3) Printer number → IP mapping
 $PrinterIpMap = @{
-    1 = '10.20.30.41'
+    1 = '10.20.32.13'
     2 = '10.20.30.42'
     3 = '10.20.30.43'
 }
