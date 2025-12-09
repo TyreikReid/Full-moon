@@ -61,17 +61,6 @@ try {
     Write-Host "Downloading driver package to $packagePath ..."
     Invoke-WebRequest -Uri $DriverDownloadUrl -OutFile $packagePath
 
-    # Validate SHA-256 if provided
-    if ($ExpectedSha256 -and $ExpectedSha256 -ne "") {
-        $actualHash = (Get-FileHash -Algorithm SHA256 -Path $packagePath).Hash.ToLower()
-        if ($actualHash -ne $ExpectedSha256.ToLower()) {
-            throw "SHA256 mismatch. Expected $ExpectedSha256, got $actualHash"
-        }
-        Write-Host "Checksum OK."
-    } else {
-        Write-Host "Checksum validation skipped (no ExpectedSha256 provided)."
-    }
-
     # Extract the package to a working folder next to the download
     $extractDir = Join-Path $downloadDir ("HP_UPD_" + [Guid]::NewGuid().ToString())
     New-Item -ItemType Directory -Path $extractDir | Out-Null
